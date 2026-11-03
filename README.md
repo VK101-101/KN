@@ -56,6 +56,14 @@ npm run build   # production build
 npm start       # run the production build
 ```
 
+### Deploying
+
+GitHub Pages cannot host this app: the chart maths runs on the server with a native Swiss Ephemeris module. Use a Node host such as Vercel, Render or a VPS.
+
+- **Vercel:** import the repository at <https://vercel.com/new>, keep the default Next.js settings, and deploy. `next.config.ts` traces `ephe/**` into the server bundle, and `sweph` ships prebuilt Linux x64/arm64 binaries.
+- **Docker / VPS:** `npm ci && npm run build && npm start` with `ephe/` alongside the app.
+- Set `SE_EPHE_PATH` if you keep the ephemeris files outside `ephe/`.
+
 ### Ephemeris data
 
 `sweph` loads its `.se1` files from `ephe/` at runtime (see `src/lib/astro/ephemeris.ts`). The repository ships the files needed for 1800–2400:
