@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { computePanchang, upagrahas } from "@/lib/astro/panchang";
+import { computePanchang, sunriseForLocalDate, upagrahas } from "@/lib/astro/panchang";
 import { sunMoon } from "@/lib/astro/ephemeris";
 import { PanchangPanel, Pill, PlanetLegend } from "@/components/panels";
 import { PanchangForm } from "@/components/panchang-form";
 import { parseBirthParams, parseOptions, type QueryParams } from "@/lib/query";
-import { fmtJdTime, longDate, msToJd, shortDate } from "@/lib/format";
-import { localToUtc, formatLocalDate } from "@/lib/time";
+import { fmtJdTime, longDate, shortDate } from "@/lib/format";
+import { formatLocalDate } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
@@ -49,10 +49,10 @@ export default async function PanchangPage({
   let sunLon = 0;
 
   try {
-    const noonUtc = localToUtc(date, "12:00", input.tz);
-    const jd = msToJd(noonUtc.getTime());
-    panchang = computePanchang(jd, input.lat, input.lon, input.tz, options.ayanamsa);
-    sunLon = sunMoon(jd, { ayanamsa: options.ayanamsa }).sun;
+    // A daily panchang is read at sunrise, the start of the Vedic day.
+    const srJd = sunriseForLocalDate(date, input.tz, input.lat, input.lon);
+    panchang = computePanchang(srJd, input.lat, input.lon, input.tz, options.ayanamsa);
+    sunLon = sunMoon(srJd, { ayanamsa: options.ayanamsa }).sun;
   } catch (e) {
     error = e instanceof Error ? e.message : "The panchang could not be computed.";
   }

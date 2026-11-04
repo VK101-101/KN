@@ -49,7 +49,7 @@ export function localToUtc(dateStr: string, timeStr: string, tz: string): Date {
   const [y, m, d] = dateStr.split("-").map(Number);
   const [hh = 0, mm = 0, ss = 0] = timeStr.split(":").map(Number);
   const guess = Date.UTC(y, m - 1, d, hh, mm, ss);
-  let offset = tzOffsetMinutes(tz, guess);
+  const offset = tzOffsetMinutes(tz, guess);
   let utc = guess - offset * 60000;
   const offset2 = tzOffsetMinutes(tz, utc);
   if (offset2 !== offset) utc = guess - offset2 * 60000;

@@ -73,7 +73,8 @@ const VASHYA_SCORE: Record<string, Record<string, number>> = {
 function taraScore(fromNak: number, toNak: number) {
   const count = ((toNak - fromNak + 27) % 27) + 1;
   const rem = count % 9;
-  const bad = rem === 3 || rem === 5 || rem === 7 || rem === 0;
+  // Vipat (3), Pratyari (5) and Vadha (7) are the inauspicious Taras; the 9th is Ati-mitra.
+  const bad = rem === 3 || rem === 5 || rem === 7;
   return bad ? 0 : 1.5;
 }
 

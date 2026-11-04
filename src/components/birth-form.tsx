@@ -45,10 +45,41 @@ export function personFromDefaults(): PersonState {
   };
 }
 
+/** Great-circle distance in kilometres. */
+function distanceKm(aLat: number, aLon: number, bLat: number, bLon: number) {
+  const R = 6371;
+  const rad = (d: number) => (d * Math.PI) / 180;
+  const dLat = rad(bLat - aLat);
+  const dLon = rad(bLon - aLon);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(rad(aLat)) * Math.cos(rad(bLat)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/**
+ * A label for coordinates read from the browser. We keep it honest: name the
+ * nearest known city only when it is genuinely close, otherwise show the
+ * coordinates themselves rather than leaving a stale city name in the form.
+ */
+function locationLabel(lat: number, lon: number) {
+  let best: (typeof CITIES)[number] | null = null;
+  let bestDist = Infinity;
+  for (const c of CITIES) {
+    const d = distanceKm(lat, lon, c.lat, c.lon);
+    if (d < bestDist) {
+      bestDist = d;
+      best = c;
+    }
+  }
+  if (best && bestDist <= 25) return `Near ${best.name}`;
+  return `My location (${Math.abs(lat).toFixed(2)}°${lat >= 0 ? "N" : "S"}, ${Math.abs(lon).toFixed(2)}°${lon >= 0 ? "E" : "W"})`;
+}
+
 export function personToInput(p: PersonState): BirthInput {
   const city = CITIES.find((c) => c.name.toLowerCase() === p.place.toLowerCase());
-  const lat = Number(p.lat);
-  const lon = Number(p.lon);
+  const lat = p.lat.trim() === "" ? NaN : Number(p.lat);
+  const lon = p.lon.trim() === "" ? NaN : Number(p.lon);
   return {
     name: p.name.trim() || "Native",
     gender: p.gender,
@@ -72,6 +103,15 @@ function CityPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value.place);
+  const [syncedPlace, setSyncedPlace] = useState(value.place);
+
+  // Keep the text box in step when the place is changed by the parent (e.g.
+  // geolocation or a preset). Adjusting during render is the React-recommended
+  // alternative to a setState effect and avoids a cascading re-render.
+  if (value.place !== syncedPlace) {
+    setSyncedPlace(value.place);
+    setQuery(value.place);
+  }
 
   const suggestions = useMemo(() => searchCities(query, 9), [query]);
 
@@ -294,6 +334,17 @@ function OptionsFields({
           Use true lunar node (default: mean)
         </label>
       </div>
+      <div className="flex items-end">
+        <label className="flex cursor-pointer items-center gap-2.5 pb-2 text-sm text-ink">
+          <input
+            type="checkbox"
+            className="h-4 w-4 accent-[#4a3a86]"
+            checked={options.topocentric}
+            onChange={(e) => onChange({ ...options, topocentric: e.target.checked })}
+          />
+          Topocentric positions (default: geocentric)
+        </label>
+      </div>
     </div>
   );
 }
@@ -313,6 +364,34 @@ export function BirthForm({
   const [person, setPerson] = useState<PersonState>(initial ?? personFromDefaults());
   const [options, setOptions] = useState<ChartOptions>(initialOptions);
   const [advanced, setAdvanced] = useState(false);
+  const [geo, setGeo] = useState<"idle" | "locating" | "error">("idle");
+
+  const tzOptions = TIMEZONES.includes(person.tz) ? TIMEZONES : [person.tz, ...TIMEZONES];
+
+  function locate() {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setGeo("error");
+      return;
+    }
+    setGeo("locating");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        setPerson((p) => ({
+          ...p,
+          place: locationLabel(lat, lon),
+          lat: lat.toFixed(4),
+          lon: lon.toFixed(4),
+          tz: detected || p.tz,
+        }));
+        setGeo("idle");
+      },
+      () => setGeo("error"),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 600000 },
+    );
+  }
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -336,6 +415,19 @@ export function BirthForm({
         </button>
         {advanced && (
           <div className="space-y-5 border-t border-line p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-muted">
+                Coordinates and timezone are set automatically when you choose a city.
+              </p>
+              <button type="button" onClick={locate} className="btn btn-ghost !px-3 !py-1.5 text-xs">
+                {geo === "locating" ? "Locating…" : "Use my location"}
+              </button>
+            </div>
+            {geo === "error" && (
+              <p className="text-xs text-rose-600">
+                Your location could not be read. Check the browser permission or enter the coordinates below.
+              </p>
+            )}
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
                 <label className="label" htmlFor="birth-lat">
@@ -377,7 +469,7 @@ export function BirthForm({
                   value={person.tz}
                   onChange={(e) => setPerson({ ...person, tz: e.target.value })}
                 >
-                  {TIMEZONES.map((t) => (
+                  {tzOptions.map((t) => (
                     <option key={t} value={t}>
                       {t}
                     </option>

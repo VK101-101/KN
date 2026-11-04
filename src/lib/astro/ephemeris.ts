@@ -51,7 +51,7 @@ export function initEphemeris() {
     path.join(process.cwd(), "public", "ephe"),
   ];
   for (const p of candidates) {
-    if (fs.existsSync(p)) {
+    if (fs.existsSync(/*turbopackIgnore: true*/ p)) {
       try {
         swe.set_ephe_path(p);
         break;
@@ -327,7 +327,6 @@ export function kpLords(lon: number): KpLords {
   };
 
   const seq1 = rotate(starLord);
-  let acc = 0;
   let subStart = starStart;
   let subLord = seq1[0];
   const posInStar = l - starStart;

@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { VargaChart, KundliResult } from "@/lib/astro";
 import { PLANETS, RASHIS } from "@/lib/astro/constants";
 import { NorthChart, SouthChart } from "./charts";
-import { dms, ordinal } from "@/lib/format";
+import { ordinal } from "@/lib/format";
 
 export function VargaExplorer({ result }: { result: KundliResult }) {
   const [selected, setSelected] = useState("D9");

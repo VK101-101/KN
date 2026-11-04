@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { KundliResult } from "@/lib/astro";
-import { PLANETS, RASHIS } from "@/lib/astro/constants";
-import { dms, fmtJdDate, fmtJdTime, longDate, ordinal } from "@/lib/format";
+import { PLANETS } from "@/lib/astro/constants";
+import { ayanamsaLabel, houseSystemLabel } from "@/lib/astro/options";
+import { fmtJdTime, longDate } from "@/lib/format";
 import { ChartPair } from "./charts";
 import { CurrentDasha, DashaTree, YoginiTable } from "./dasha-tree";
 import {
@@ -15,9 +16,11 @@ import {
   PanchangSummary,
   PlanetLegend,
   PlanetTable,
+  RemediesPanel,
   SadeSatiPanel,
   Section,
   ShadbalaPanel,
+  SpecialPointsPanel,
   TransitPanel,
   VargaTable,
   VimshopakaPanel,
@@ -105,7 +108,7 @@ export function KundliView({ result, reportHref }: { result: KundliResult; repor
                 bySign={chart.bySign}
                 lagnaSign={chart.lagna.sign}
                 title="D1 · Rashi"
-                subtitle="Sidereal, Lahiri ayanamsa"
+                subtitle={`Sidereal · ${ayanamsaLabel(chart.options.ayanamsa)}`}
                 retrograde={retro}
                 combust={combust}
               />
@@ -153,6 +156,16 @@ export function KundliView({ result, reportHref }: { result: KundliResult; repor
             </div>
           </Section>
 
+          <Section
+            eyebrow="Sensitive points"
+            title="Bhrigu Bindu, Gulika and upagrahas"
+            description="Derived points that classical texts use as triggers and modifiers alongside the nine grahas."
+          >
+            <div className="card p-4 sm:p-5">
+              <SpecialPointsPanel chart={chart} upagrahas={result.upagrahas} />
+            </div>
+          </Section>
+
           <Section eyebrow="Highlights" title="Yogas in this chart" description="The named combinations detected with strict classical rules.">
             <YogaGrid yogas={result.yogas.slice(0, 6)} />
           </Section>
@@ -164,14 +177,14 @@ export function KundliView({ result, reportHref }: { result: KundliResult; repor
           <Section
             eyebrow="D1"
             title="Rashi chart"
-            description="The primary chart, read with the Moon (mind) and the lagna (body and direction)."
+            description={`The primary chart, read with the Moon (mind) and the lagna (body and direction). Bhava division: ${houseSystemLabel(chart.options.houseSystem)}.`}
           >
             <div className="card p-4 sm:p-6">
               <ChartPair
                 bySign={chart.bySign}
                 lagnaSign={chart.lagna.sign}
                 title="D1 · Rashi"
-                subtitle="Sidereal, Lahiri ayanamsa"
+                subtitle={`Sidereal · ${ayanamsaLabel(chart.options.ayanamsa)}`}
                 retrograde={retro}
                 combust={combust}
               />
@@ -215,7 +228,7 @@ export function KundliView({ result, reportHref }: { result: KundliResult; repor
               <div className="card p-4">
                 <h3 className="mb-3 text-sm font-semibold text-brand-dark">How to read it</h3>
                 <p className="text-sm leading-relaxed text-muted">
-                  The maha-dasha sets the decade's theme, the antar-dasha narrows it to a few years, and the
+                  The maha-dasha sets the theme for a decade, the antar-dasha narrows it to a few years, and the
                   pratyantar times events within that. A planet gives the results of the house it occupies,
                   the houses it rules, and the planets it aspects — modified by its dignity and the divisional charts.
                 </p>
@@ -248,7 +261,7 @@ export function KundliView({ result, reportHref }: { result: KundliResult; repor
               panchang={panchang}
               tz={chart.input.tz}
               place={chart.input.place}
-              dateLabel={chart.input.date}
+              dateLabel={longDate(chart.input.date)}
               upagrahas={result.upagrahas}
             />
           </Section>
@@ -316,7 +329,7 @@ export function KundliView({ result, reportHref }: { result: KundliResult; repor
 
           <Section eyebrow="Remedies" title="Traditional upaya" description="Only for planets that are weak, combust or in an enemy sign. These are customary remedies, not medical or financial advice.">
             <div className="card p-4">
-              <InterpretationPanel reading={{ ...result.interpretation, houses: [], planets: [] }} />
+              <RemediesPanel remedies={result.interpretation.remedies} />
             </div>
           </Section>
         </div>

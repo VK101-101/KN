@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { computeKundli, type KundliResult } from "@/lib/astro";
 import { PLANETS, RASHIS } from "@/lib/astro/constants";
+import { ayanamsaLabel, houseSystemLabel } from "@/lib/astro/options";
 import { ChartPair, NorthChart } from "@/components/charts";
 import { PrintButton } from "@/components/print-button";
 import {
@@ -12,6 +13,7 @@ import {
   PlanetTable,
   SadeSatiPanel,
   ShadbalaPanel,
+  SpecialPointsPanel,
   TransitPanel,
   VargaTable,
   VimshopakaPanel,
@@ -139,8 +141,8 @@ export default async function ReportPage({
                 </p>
               </div>
               <div className="text-right text-[0.7rem] leading-relaxed text-muted">
-                <p>Lahiri ayanamsa · {chart.ayanamsa.toFixed(4)}°</p>
-                <p>Swiss Ephemeris · whole-sign bhavas</p>
+                <p>{ayanamsaLabel(chart.options.ayanamsa)} · {chart.ayanamsa.toFixed(4)}°</p>
+                <p>Swiss Ephemeris · {houseSystemLabel(chart.options.houseSystem)}</p>
                 <p>Generated {generated}</p>
               </div>
             </div>
@@ -234,7 +236,7 @@ export default async function ReportPage({
 
         {/* ---------------- planets ---------------- */}
         <section className="card p-4 sm:p-5">
-          <SectionHead n="03" title="Planetary positions" note="Sidereal · Lahiri" />
+          <SectionHead n="03" title="Planetary positions" note={`Sidereal · ${ayanamsaLabel(chart.options.ayanamsa)}`} />
           <PlanetTable chart={chart} compact />
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[0.65rem] text-muted">
             {PLANETS.map((p) => (
@@ -244,6 +246,14 @@ export default async function ReportPage({
               </span>
             ))}
             <span>R = retrograde · * = combust</span>
+          </div>
+          <div className="mt-5 border-t border-line pt-4">
+            <h3 className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted">
+              Sensitive points
+            </h3>
+            <div className="mt-2">
+              <SpecialPointsPanel chart={chart} upagrahas={result.upagrahas} />
+            </div>
           </div>
         </section>
 
@@ -370,11 +380,12 @@ export default async function ReportPage({
         <footer className="rounded-xl border border-line bg-paper-deep/50 p-4 text-[0.72rem] leading-relaxed text-muted">
           <p className="font-semibold text-ink">Notes on this report</p>
           <p className="mt-1">
-            Positions are sidereal (Lahiri / Chitrapaksha) from the Swiss Ephemeris, with the mean lunar node
-            and whole-sign bhavas. The dasha year is 365.25 days. Shadbala is in virupas (60 virupas = 1
-            rupa); the required minimum follows classical values. Sade Sati is Saturn transiting the 12th,
-            1st and 2nd signs from the natal Moon. A birth time error of four minutes moves the lagna by
-            about one degree — verify the lagna when it sits near a sign boundary.
+            Positions are sidereal ({ayanamsaLabel(chart.options.ayanamsa)}) from the Swiss Ephemeris, with the
+            {chart.options.trueNode ? " true" : " mean"} lunar node and the {houseSystemLabel(chart.options.houseSystem)}
+            {" "}bhava division. The dasha year is {chart.options.dashaYear} days. Shadbala is in virupas
+            (60 virupas = 1 rupa); the required minimum follows classical values. Sade Sati is Saturn transiting
+            the 12th, 1st and 2nd signs from the natal Moon. A birth time error of four minutes moves the lagna
+            by about one degree — verify the lagna when it sits near a sign boundary.
           </p>
           <p className="mt-2">
             This report is generated for study and guidance. It is not medical, legal or financial advice,

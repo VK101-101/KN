@@ -46,7 +46,7 @@ export function parseOptions(sp: QueryParams): ChartOptions {
     ayanamsa: ay,
     houseSystem: hs,
     trueNode: get("tn") === "1",
-    topocentric: false,
+    topocentric: get("tc") === "1",
     dashaYear: dy,
   };
 }
@@ -65,6 +65,7 @@ export function birthQuery(input: BirthInput, options: ChartOptions, prefix = ""
   q.set("ay", options.ayanamsa);
   q.set("hs", options.houseSystem);
   q.set("tn", options.trueNode ? "1" : "0");
+  q.set("tc", options.topocentric ? "1" : "0");
   q.set("dy", String(options.dashaYear));
   return q;
 }

@@ -2,6 +2,7 @@ import { PLANETS, RASHIS, type PlanetId } from "@/lib/astro/constants";
 import type { Chart } from "@/lib/astro/chart";
 import type { Panchang, PanchangSlot } from "@/lib/astro/panchang";
 import type { KundliResult } from "@/lib/astro";
+import { ayanamsaLabel, houseSystemLabel } from "@/lib/astro/options";
 import { dms, fmtJdDate, fmtJdTime, ordinal } from "@/lib/format";
 
 const DIGNITY_COLOR: Record<string, string> = {
@@ -526,23 +527,8 @@ export function InterpretationPanel({ reading }: { reading: KundliResult["interp
           <p className="mt-1 text-xs text-muted">
             Traditional upaya for planets that are weak, combust or in an enemy sign. Choose one or two, not all.
           </p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            {reading.remedies.map((r) => (
-              <div key={r.planet} className="rounded-xl border border-line bg-paper-deep/40 p-3">
-                <p className="flex items-center gap-2 text-sm font-semibold">
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: PLANETS[r.planet].color }} />
-                  {PLANETS[r.planet].name}
-                </p>
-                <p className="mt-1 text-[0.72rem] text-muted">{r.reason}</p>
-                <dl className="mt-2 space-y-1 text-[0.78rem]">
-                  <div className="flex justify-between gap-2"><dt className="text-muted">Gem</dt><dd className="text-right">{r.gem}</dd></div>
-                  <div className="flex justify-between gap-2"><dt className="text-muted">Mantra</dt><dd className="text-right">{r.mantra}</dd></div>
-                  <div className="flex justify-between gap-2"><dt className="text-muted">Day</dt><dd className="text-right">{r.day}</dd></div>
-                  <div className="flex justify-between gap-2"><dt className="text-muted">Charity</dt><dd className="max-w-[70%] text-right">{r.charity}</dd></div>
-                  <div className="flex justify-between gap-2"><dt className="text-muted">Deity</dt><dd className="text-right">{r.deity}</dd></div>
-                </dl>
-              </div>
-            ))}
+          <div className="mt-3">
+            <RemediesPanel remedies={reading.remedies} />
           </div>
         </Panel>
       )}
@@ -550,7 +536,103 @@ export function InterpretationPanel({ reading }: { reading: KundliResult["interp
   );
 }
 
+/** Remedies only — used on its own so the reading paragraphs are not repeated. */
+export function RemediesPanel({ remedies }: { remedies: KundliResult["interpretation"]["remedies"] }) {
+  if (!remedies.length) {
+    return (
+      <p className="text-sm leading-relaxed text-muted">
+        No planet in this chart is debilitated, combust or placed in an enemy sign, so no single remedial
+        planet stands out. Traditional practice would still recommend the mantra and charity of the lagna
+        lord and the current mahadasha lord as general support.
+      </p>
+    );
+  }
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {remedies.map((r) => (
+        <div key={r.planet} className="rounded-xl border border-line bg-paper-deep/40 p-3">
+          <p className="flex items-center gap-2 text-sm font-semibold">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: PLANETS[r.planet].color }} />
+            {PLANETS[r.planet].name}
+          </p>
+          <p className="mt-1 text-[0.72rem] text-muted">{r.reason}</p>
+          <dl className="mt-2 space-y-1 text-[0.78rem]">
+            <div className="flex justify-between gap-2"><dt className="text-muted">Gem</dt><dd className="text-right">{r.gem}</dd></div>
+            <div className="flex justify-between gap-2"><dt className="text-muted">Mantra</dt><dd className="text-right">{r.mantra}</dd></div>
+            <div className="flex justify-between gap-2"><dt className="text-muted">Day</dt><dd className="text-right">{r.day}</dd></div>
+            <div className="flex justify-between gap-2"><dt className="text-muted">Charity</dt><dd className="max-w-[70%] text-right">{r.charity}</dd></div>
+            <div className="flex justify-between gap-2"><dt className="text-muted">Deity</dt><dd className="text-right">{r.deity}</dd></div>
+          </dl>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const UPAGRAHA_LABELS: Record<string, string> = {
+  dhuma: "Dhuma",
+  vyatipata: "Vyatipata",
+  parivesha: "Parivesha",
+  indrachapa: "Indrachapa",
+  upaketu: "Upaketu",
+};
+
+/** Bhrigu Bindu, Gulika and the five Sun-based upagrahas. */
+export function SpecialPointsPanel({
+  chart,
+  upagrahas,
+}: {
+  chart: Chart;
+  upagrahas: Record<string, number>;
+}) {
+  const rows = [
+    { label: "Bhrigu Bindu", lon: chart.bhriguBindu, note: "Rahu–Moon midpoint" },
+    { label: "Gulika", lon: chart.gulika, note: "Lagna at the start of Gulika kaal" },
+    ...Object.entries(upagrahas).map(([key, lon]) => ({
+      label: UPAGRAHA_LABELS[key] ?? key,
+      lon,
+      note: "Sun-based upagraha",
+    })),
+  ];
+  return (
+    <div className="overflow-x-auto">
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>Point</th>
+            <th>Rashi</th>
+            <th>Degree</th>
+            <th>House</th>
+            <th>Derivation</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => {
+            const sign = Math.floor(r.lon / 30) % 12;
+            const house = ((sign - chart.lagna.sign + 12) % 12) + 1;
+            return (
+              <tr key={r.label}>
+                <td className="font-semibold">{r.label}</td>
+                <td>{RASHIS[sign].name}</td>
+                <td className="font-mono text-[0.78rem]">{dms(r.lon % 30)}</td>
+                <td>{ordinal(house)}</td>
+                <td className="text-muted">{r.note}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <p className="mt-2 text-xs leading-relaxed text-muted">
+        Bhrigu Bindu is the midpoint of the arc from Rahu to the Moon and is used as a sensitive trigger
+        point in dasha analysis. Gulika is the ascendant rising at the start of the Gulika kaal.
+      </p>
+    </div>
+  );
+}
+
 export function SadeSatiPanel({ info, tz }: { info: KundliResult["sadeSati"]; tz: string }) {
+  // Show the current cycle and what is coming, not the oldest rows in the scan window.
+  const rows = info.periods.filter((p) => p.endJd >= info.nowJd - 365.25).slice(0, 10);
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3">
@@ -572,14 +654,20 @@ export function SadeSatiPanel({ info, tz }: { info: KundliResult["sadeSati"]; tz
             </tr>
           </thead>
           <tbody>
-            {info.periods.slice(0, 10).map((p, i) => (
-              <tr key={i}>
-                <td className="font-medium">{p.phase}</td>
-                <td>{RASHIS[p.sign].name}</td>
-                <td>{fmtJdDate(p.startJd, tz)}</td>
-                <td>{fmtJdDate(p.endJd, tz)}</td>
-              </tr>
-            ))}
+            {rows.map((p, i) => {
+              const isNow = info.active && p.sign === info.saturnSign && p.phase === info.phase;
+              return (
+                <tr key={i} className={isNow ? "bg-amber-50" : ""}>
+                  <td className="font-medium">
+                    {p.phase}
+                    {isNow && <span className="chip ml-2 !border-amber-300 !bg-amber-100 !text-amber-900">Now</span>}
+                  </td>
+                  <td>{RASHIS[p.sign].name}</td>
+                  <td>{fmtJdDate(p.startJd, tz)}</td>
+                  <td>{fmtJdDate(p.endJd, tz)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -684,7 +772,7 @@ export function KeyFacts({ result }: { result: KundliResult }) {
     { label: "Nakshatra lord", value: PLANETS[moon.nakshatraLord].name, sub: `Moon at ${dms(moon.degInSign)}` },
     { label: "Current dasha", value: current ? PLANETS[current.lord].name : "—", sub: current ? `${["Maha", "Antar", "Pratyantar", "Sookshma", "Prana"][current.level - 1]} dasha` : "" },
     { label: "Tithi", value: panchang.tithi.fullName, sub: `${panchang.weekdayName} · ${panchang.nakshatra.name}` },
-    { label: "Ayanamsa", value: `${chart.ayanamsa.toFixed(4)}°`, sub: "Lahiri / Chitrapaksha" },
+    { label: "Ayanamsa", value: `${chart.ayanamsa.toFixed(4)}°`, sub: `${ayanamsaLabel(chart.options.ayanamsa)} · ${houseSystemLabel(chart.options.houseSystem)}` },
   ];
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">

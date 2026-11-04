@@ -127,8 +127,9 @@ export function interpret(chart: Chart, chain: DashaChainItem[], yogas: YogaResu
       reason: `${PLANETS[p.planet].name} is ${p.combust ? "combust" : p.dignity.toLowerCase()} in the ${ORDINAL[p.house]} house.`,
     }));
 
+  const strongest = [...chart.grahas].sort((a, b) => dignityRank(a.dignity) - dignityRank(b.dignity))[0];
   const strengths = [
-    `The strongest planet by dignity is ${[...chart.grahas].sort((a, b) => dignityRank(a.dignity) - dignityRank(b.dignity))[0].planet}`,
+    `The strongest planet by dignity is ${PLANETS[strongest.planet].name} (${strongest.dignity.toLowerCase()}) in the ${ORDINAL[strongest.house]} house.`,
   ];
 
   return {

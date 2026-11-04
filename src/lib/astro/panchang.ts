@@ -9,7 +9,6 @@ import {
   type PlanetId,
 } from "./constants";
 import {
-  dateFromJdUtc,
   jdFromDateUtc,
   norm360,
   riseSet,
@@ -17,7 +16,7 @@ import {
   swe,
   type AyanamsaKey,
 } from "./ephemeris";
-import { localToUtc, weekdayOfJdInTz } from "../time";
+import { localToUtc, utcToLocalParts, weekdayOfJdInTz } from "../time";
 
 const D2R = Math.PI / 180;
 
@@ -171,9 +170,12 @@ export function computePanchang(
   const { sun, moon } = sunMoon(jd, { ayanamsa });
 
   // Hindu day = sunrise .. next sunrise
-  let sr = riseSet(jd - 0.9, lat, lon, swe.constants.SE_SUN, true);
+  const sr = riseSet(jd - 0.9, lat, lon, swe.constants.SE_SUN, true);
   let srJd = sr.jd ?? jd + 0.25;
-  if (srJd > jd) {
+  // When the reference instant is itself sunrise, the second search returns the
+  // same instant with a tiny rounding difference. Only step back a day if the
+  // sunrise is genuinely later than the reference.
+  if (srJd > jd + 1e-4) {
     // birth before sunrise -> panchang day began yesterday
     const prev = riseSet(srJd - 1.2, lat, lon, swe.constants.SE_SUN, true);
     srJd = prev.jd ?? srJd - 1;
@@ -213,10 +215,15 @@ export function computePanchang(
   const monthIndex = (sunSignAtNewMoon + 1) % 12;
   const purnimantaIndex = tLabel.paksha === "Krishna" ? (monthIndex + 1) % 12 : monthIndex;
 
-  const gregYear = dateFromJdUtc(jd).getUTCFullYear();
-  const afterChaitra = monthIndex <= 9;
-  const vikram = gregYear + (afterChaitra ? 57 : 56);
+  const greg = utcToLocalParts((jd - 2440587.5) * 86400000, tz);
+  const gregYear = greg.year;
+  // The Vikram year turns over at Chaitra. Pausha straddles the Gregorian new
+  // year, so it belongs to the new samvat only in November/December.
+  const vikram =
+    gregYear + (monthIndex <= 8 || (monthIndex === 9 && greg.month >= 11) ? 57 : 56);
   const shaka = vikram - 135;
+  // 60-year Jovian cycle: 1987-88 (Shaka 1909) was Prabhava.
+  const samvatsara = SAMVATSARAS[(((shaka + 11) % 60) + 60) % 60];
 
   const dayLen = (ssJd - srJd) * 24;
   const nightLen = (nextSr - ssJd) * 24;
@@ -277,7 +284,7 @@ export function computePanchang(
     moonSign: Math.floor(moon / 30),
     sunSign,
     lunarMonth: { name: LUNAR_MONTHS[monthIndex], purnimantaName: LUNAR_MONTHS[purnimantaIndex], index: monthIndex },
-    samvat: { vikram, shaka, samvatsara: SAMVATSARAS[((vikram % 60) + 60) % 60] },
+    samvat: { vikram, shaka, samvatsara },
     ritu,
     ayana: sunSign >= 9 || sunSign <= 2 ? "Uttarayana" : "Dakshinayana",
     sunRashi: RASHIS[sunSign].name,
@@ -297,28 +304,28 @@ export function findPrevNewMoon(jd: number, ayanamsa: AyanamsaKey = "lahiri") {
     const { sun, moon } = sunMoon(j, { ayanamsa });
     return norm360(moon - sun);
   };
-  // walk back until the Moon-Sun angle wraps from small to large
-  let lo = jd - 32;
-  let hi = jd;
-  let prev = g(lo);
-  let cursor = lo;
+  // Walk backwards from the date and take the first crossing we meet: that is
+  // the most recent new moon. (Walking forwards from jd-32 can return an older
+  // new moon when the window opens just before one.)
   const step = 0.25;
-  while (cursor < hi) {
-    cursor = Math.min(cursor + step, hi);
-    const cur = g(cursor);
-    if (cur < prev && cur < 20) {
-      // crossing near 0 between cursor-step and cursor
-      let a = cursor - step;
-      let b = cursor;
-      for (let i = 0; i < 45; i++) {
+  let hi = jd;
+  let prev = g(jd);
+  for (let i = 0; i < 32 / step; i++) {
+    const lo = hi - step;
+    const cur = g(lo);
+    if (cur > prev && cur > 180 && prev < 20) {
+      // Between lo (angle near 360°) and hi (angle near 0°).
+      let a = lo;
+      let b = hi;
+      for (let k = 0; k < 50; k++) {
         const m = (a + b) / 2;
-        const v = g(m);
-        if (v > 180) a = m;
+        if (g(m) > 180) a = m;
         else b = m;
       }
       return (a + b) / 2;
     }
     prev = cur;
+    hi = lo;
   }
   return jd - 29.53;
 }

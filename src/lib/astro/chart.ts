@@ -21,8 +21,8 @@ import {
   declination,
   jdFromDateUtc,
   kpLords,
+  midPoint,
   nakInfo,
-  norm360,
   type HouseResult,
   type KpLords,
 } from "./ephemeris";
@@ -183,8 +183,8 @@ export function buildChart(input: BirthInput, options: ChartOptions = DEFAULT_OP
 
   const rahu = grahas[7].lon;
   const moon = grahas[1].lon;
-  const bh = norm360(rahu + ((moon - rahu + 540) % 360) / 2);
-  const bhriguBindu = norm360(bh);
+  // Bhrigu Bindu is the shorter-arc midpoint between Rahu and the Moon.
+  const bhriguBindu = midPoint(rahu, moon);
 
   return {
     input,

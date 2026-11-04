@@ -42,3 +42,13 @@ export const DEFAULT_OPTIONS: ChartOptions = {
   topocentric: false,
   dashaYear: 365.25,
 };
+
+/** Human-readable label for the selected ayanamsa (safe in client components). */
+export function ayanamsaLabel(key: AyanamsaKey) {
+  return AYANAMSAS.find((a) => a.key === key)?.label ?? key;
+}
+
+/** Human-readable label for the selected house system (safe in client components). */
+export function houseSystemLabel(key: HouseSystemKey) {
+  return HOUSE_SYSTEMS.find((h) => h.key === key)?.label ?? key;
+}

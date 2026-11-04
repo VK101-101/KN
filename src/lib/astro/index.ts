@@ -24,7 +24,6 @@ import { DEFAULT_OPTIONS, type ChartOptions } from "./options";
 import { computeHouses, computeGrahas, bodyLongitude, norm360, swe } from "./ephemeris";
 import { computePanchang, upagrahas, type Panchang } from "./panchang";
 import {
-  currentDashaChain,
   subPeriods,
   vimshottari,
   yoginiDasha,
@@ -71,6 +70,7 @@ export interface SadeSatiInfo {
   phase: SadeSatiPeriod["phase"] | null;
   saturnSign: number;
   natalMoonSign: number;
+  nowJd: number;
   periods: SadeSatiPeriod[];
 }
 
@@ -228,10 +228,14 @@ export function computeSadeSati(chart: Chart, now: Date, options: ChartOptions):
   const phaseOf = (s: number): SadeSatiPeriod["phase"] | null =>
     relative(s) === 12 ? "Rising" : relative(s) === 1 ? "Peak" : relative(s) === 2 ? "Setting" : null;
 
-  // Find ingress instants by scanning five days at a time across ~50 years.
+  // Find ingress instants by scanning five days at a time across a wide window.
   const step = 5;
-  const start = jdNow - 18 * 365.25;
-  const end = jdNow + 32 * 365.25;
+  let start = jdNow - 40 * 365.25;
+  // Make sure the window opens outside a Sade Sati, so the first listed period
+  // has a real start rather than an artificial one at the scan boundary.
+  for (let i = 0; i < 300 && phaseOf(signAt(start)); i++) start -= step * 2;
+  let end = jdNow + 32 * 365.25;
+  for (let i = 0; i < 300 && phaseOf(signAt(end)); i++) end += step * 2;
   const periods: SadeSatiPeriod[] = [];
   let prevSign = signAt(start);
   let segStart = start;
@@ -262,6 +266,7 @@ export function computeSadeSati(chart: Chart, now: Date, options: ChartOptions):
     phase: active,
     saturnSign,
     natalMoonSign: moonSign,
+    nowJd: jdNow,
     periods: periods.filter((p) => p.endJd - p.startJd > 20).sort((a, b) => a.startJd - b.startJd),
   };
 }
